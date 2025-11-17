@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partner Period Tracker</title>
+    <!-- Carica Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- CSS -->
+    <style>
+        /* Importa un font più moderno e morbido */
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
+
+        /* Applica il font e uno sfondo sfumato all'app */
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(170deg, #fef2f2 0%, #f5f3ff 100%);
+            overscroll-behavior: none;
+        }
+
+        /* Stile Card Login e Welcome */
+        .auth-card {
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Stile per la card principale (usata solo su desktop) */
+        #tracker-view .main-content-card {
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Su mobile, la card è trasparente e a schermo intero */
+        @media (max-width: 640px) {
+            #tracker-view .main-content-card {
+                background-color: transparent;
+                backdrop-filter: none;
+                box-shadow: none;
+                border: none;
+                padding: 0;
+            }
+        }
+
+        /* Stile per i titoli */
+        h1, h2, h3 {
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        /* Stile base per i giorni del calendario */
+        .calendar-day {
+            @apply w-full h-16 sm:h-24 border border-transparent p-2 text-sm sm:text-base flex flex-col justify-start items-start;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-color: rgba(0,0,0,0.05);
+        }
+        .day-number { @apply font-semibold; transition: all 0.2s ease-in-out; }
+
+        /* Stili giorni calendario */
+        .period-day { background: linear-gradient(135deg, #fce7f3, #fbcfe8); }
+        .fertile-day { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
+        .ovulation-day { border: 2px solid #22c55e; font-weight: 700; }
+        .today .day-number {
+            background-color: #3b82f6; color: white; border-radius: 50%;
+            width: 1.75rem; height: 1.75rem;
+            display: flex; align-items: center; justify-content: center; font-weight: 700;
+        }
+
+        /* Icone sul calendario */
+        .icons-container { @apply flex items-center space-x-1 mt-1; }
+        .note-dot {
+            @apply w-2 h-2 bg-purple-500 rounded-full;
+            box-shadow: 0 0 6px rgba(139, 92, 246, 0.7);
+        }
+        .heart-icon { @apply text-xs leading-none; color: #ec4899; }
+        
+        /* Stili Bottoni */
+        #create-cycle-btn,
+        .action-button-dropdown {
+            background: linear-gradient(135deg, #ec4899, #d946ef);
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+            transition: all 0.3s ease;
+        }
+        #create-cycle-btn:hover,
+        .action-button-dropdown:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
+        }
+        .action-button-dropdown:disabled,
+        #create-cycle-btn:disabled,
+        #join-cycle-btn:disabled {
+            background: linear-gradient(135deg, #9ca3af, #6b7280);
+            box-shadow: none; opacity: 0.7; cursor: not-allowed; transform: none;
+        }
+
+        #join-cycle-btn {
+            background: linear-gradient(135deg, #4b5563, #1f2937);
+            box-shadow: 0 4px 12px rgba(75, 85, 99, 0.3);
+            transition: all 0.3s ease;
+        }
+        #join-cycle-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 16px rgba(75, 85, 99, 0.4);
+        }
+
+        #add-note-btn {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+        #add-note-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+        }
+        
+        /* Menu Dropdown Azioni */
+        #actions-dropdown {
+            @apply absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-xl z-50 p-2;
+            transition: all 0.2s ease-in-out;
+            transform-origin: top right;
+        }
+        #actions-dropdown.hidden {
+            transform: scale(0.95);
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        /* === STILI CHAT (Integrata) === */
+        #ai-chat-box {
+            @apply bg-indigo-50 p-4 rounded-lg border border-indigo-200 flex flex-col;
+            height: 500px;
+        }
+        .chat-messages {
+            @apply p-2 flex-grow overflow-y-auto flex flex-col space-y-4;
+            background-color: #f7faff;
+            border-radius: 0.5rem;
+        }
+        .message-container { @apply flex items-start space-x-3; max-width: 90%; }
+        .message-container.user { @apply flex-row-reverse space-x-reverse self-end; }
+        .message-avatar { @apply w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white; }
+        .message-avatar.ai { @apply bg-indigo-500; }
+        .message-avatar.user { @apply bg-teal-500; }
+        .message-bubble { @apply p-3 rounded-xl max-w-full; word-break: break-word; }
+        .message-bubble.ai { @apply bg-indigo-100 text-indigo-800; border-bottom-left-radius: 0.25rem; }
+        .message-bubble.user { @apply bg-teal-500 text-white; border-bottom-right-radius: 0.25rem; }
+        .message-bubble.loading { @apply bg-gray-200 text-gray-500 italic; }
+        .chat-input-area { @apply pt-4 flex-shrink-0 flex space-x-2 bg-transparent; }
+        .chat-input { @apply flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2; @apply focus:ring-teal-400 focus:border-teal-400 bg-white; }
+        .chat-send-btn { @apply p-2 bg-teal-500 text-white rounded-lg transition-colors duration-200; @apply hover:bg-teal-600; }
+    
+        /* Stile per lo spinner del pulsante */
+        .btn-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="leading-normal tracking-normal">
+
+    <!-- Vista di Login -->
+    <div id="login-view" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md p-8 rounded-2xl text-center auth-card">
+            <h1 class="text-3xl font-bold text-pink-600 mb-6">Partner Period Tracker</h1>
+            <p class="text-gray-600 mb-8">Accedi per salvare e condividere il tuo ciclo in modo sicuro.</p>
+            <button id="login-btn" class="w-full bg-white border border-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-50 transition-all duration-300 flex items-center justify-center space-x-2">
+                <svg class_name="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.64-3.337-11.284-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,36.59,44,30.823,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                <span>Accedi con Google</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Vista di Caricamento (usata tra le viste) -->
+    <div id="loading-view" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="text-center">
+            <h2 class="text-2xl font-semibold text-gray-700">Caricamento...</h2>
+            <p id="loading-message" class="text-gray-500">Connessione in corso...</p>
+        </div>
+    </div>
+
+    <!-- Vista di Benvenuto (Ora per 'Crea/Unisciti') -->
+    <div id="welcome-view" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md p-8 rounded-2xl text-center auth-card">
+            <h1 class="text-3xl font-bold text-pink-600 mb-6">Benvenuto/a!</h1>
+            <p class="text-gray-600 mb-8">Non sei ancora collegato/a a un ciclo. Creane uno nuovo o unisciti a quello del tuo partner.</p>
+            <!-- Pulsante con gestione spinner -->
+            <button id="create-cycle-btn" class="w-full text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-300 mb-4 flex items-center justify-center">
+                Crea un Nuovo Ciclo
+            </button>
+            <hr class="my-6 border-gray-300">
+            <p class="text-gray-600 mb-4">O unisciti a un ciclo esistente:</p>
+            <div class="flex space-x-2">
+                <input type="text" id="join-id-input" placeholder="Incolla l'ID del ciclo" class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400">
+                <!-- Pulsante con gestione spinner -->
+                <button id="join-cycle-btn" class="text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all duration-300 flex items-center justify-center">
+                    Unisciti
+                </button>
+            </div>
+            <button id="app-logout-btn" class="mt-8 text-sm text-gray-500 hover:text-red-500">Esci</button>
+        </div>
+    </div>
+
+    <!-- Vista Tracker Principale (Layout a Schermo Intero) -->
+    <div id="tracker-view" class="hidden w-full min-h-screen p-4 sm:p-8 pb-24">
+        
+        <!-- Card Contenuto (diventa la base su desktop) -->
+        <div class="main-content-card w-full max-w-6xl mx-auto p-4 sm:p-8 rounded-2xl">
+            
+            <!-- Intestazione -->
+            <div class="relative flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-200">
+                <h1 class="text-3xl font-bold text-pink-600">Il Tuo Ciclo Condiviso</h1>
+                
+                <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                    <button id="logout-btn" class="flex items-center text-sm text-gray-500 hover:text-red-500">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        Esci
+                    </button>
+                    <!-- Pulsante "+" -->
+                    <div class="relative">
+                        <button id="open-actions-menu-btn" class="p-2 w-10 h-10 flex items-center justify-center bg-pink-500 hover:bg-pink-600 text-white rounded-full shadow-lg transition-all duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v12m6-6H6"></path></svg>
+                        </button>
+                        
+                        <!-- Menu a Tendina Azioni -->
+                        <div id="actions-dropdown" class="hidden">
+                            <div class="space-y-2">
+                                <button id="dropdown-log-period-start" class="w-full text-white font-bold py-3 px-4 rounded-lg action-button-dropdown text-sm">
+                                    Inizio Ciclo (Oggi)
+                                </button>
+                                <button id="dropdown-log-period-end" class="w-full text-white font-bold py-3 px-4 rounded-lg action-button-dropdown text-sm">
+                                    Fine Ciclo (Oggi)
+                                </button>
+                                <button id="dropdown-log-intercourse" class="w-full text-white font-bold py-3 px-4 rounded-lg action-button-dropdown text-sm">
+                                    Aggiungi Rapporto (Oggi)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ID Condivisione -->
+            <div id="share-id-box" class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <label class="text-sm font-semibold text-gray-700">ID Ciclo Condiviso (da dare al partner):</label>
+                <div class="flex items-center space-x-2 mt-1">
+                    <input id="cycle-id-display" type="text" readonly class="flex-grow p-2 bg-gray-200 border border-gray-300 rounded-lg cursor-pointer text-gray-600 font-mono">
+                    <button id="copy-id-btn" title="Copia ID" class="p-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-all duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+                <div id="copy-success" class="text-green-600 text-sm mt-1 hidden">ID Copiato!</div>
+            </div>
+
+            <!-- Avviso Modalità Demo (Nascosto di default) -->
+            <div id="demo-mode-alert" class="hidden mb-6 p-4 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg">
+                <strong>Modalità Demo Attiva:</strong> L'app è in anteprima. I dati non verranno salvati e l'AI è simulata.
+            </div>
+
+            <!-- Layout a 2 colonne (si impila su mobile) -->
+            <div class="flex flex-col lg:flex-row gap-6">
+                <!-- Colonna Sinistra: Calendario -->
+                <div class="flex-grow lg:w-2/3">
+                    <!-- Header Calendario -->
+                    <div class="flex justify-between items-center mb-4">
+                        <button id="prev-month-btn" class="p-2 rounded-full hover:bg-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <h2 id="calendar-header" class="text-2xl font-semibold text-gray-800"></h2>
+                        <button id="next-month-btn" class="p-2 rounded-full hover:bg-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- Griglia Calendario -->
+                    <div class="grid grid-cols-7 gap-1 bg-gray-50 p-2 rounded-lg">
+                        <div class="text-center font-semibold text-gray-600 text-xs sm:text-sm">LUN</div>
+                        <div class="text-center font-semibold text-gray-600 text-xs sm:text-sm">MAR</div>
+                        <div class="text-center font-semibold text-gray-600 text-xs sm:text-sm">MER</div>
+                        <div class="text-center font-semibold text-gray-600 text-xs sm:text-sm">GIO</div>
+                        <div class="text-center font-semibold text-gray-600 text-xs sm:text-sm">VEN</div>
+                        <div class="text-center font-semibold text-gray-600 text-xs sm:text-sm">SAB</div>
+                        <div class="text-center font-semibold text-gray-600 text-xs sm:text-sm">DOM</div>
+                        <div id="calendar-grid" class="col-span-7 grid grid-cols-7 gap-1"></div>
+                    </div>
+                    
+                    <p id="period-status" class="text-center text-pink-600 font-semibold mt-6"></p>
+                </div>
+
+                <!-- Colonna Destra: Previsioni, Note e Chat -->
+                <div class="flex-grow lg:w-1/3 space-y-6">
+                    <!-- Previsioni -->
+                    <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                        <h3 class="text-xl font-semibold text-blue-800 mb-4">Previsioni</h3>
+                        <div id="predictions-content" class="space-y-2 text-gray-700">
+                            <p>Nessun dato sufficiente per le previsioni.</p>
+                        </div>
+                        <!-- Testo aggiornato per invitare all'inserimento dati -->
+                        <p class="text-xs text-blue-600 mt-4">
+                            Aggiungi età, peso e altezza nel tuo profilo per previsioni future più accurate.
+                        </p>
+                    </div>
+
+                    <!-- NUOVO: Riquadro Profilo -->
+                    <div class="bg-green-50 p-6 rounded-lg border border-green-200">
+                        <h3 class="text-xl font-semibold text-green-800 mb-4">Il Mio Profilo</h3>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label for="age-input" class="text-sm font-medium text-gray-700">Età</label>
+                                    <input type="number" id="age-input" placeholder="25" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400">
+                                </div>
+                                <div>
+                                    <label for="weight-input" class="text-sm font-medium text-gray-700">Peso (kg)</label>
+                                    <input type="number" id="weight-input" placeholder="60" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400">
+                                </div>
+                                <div>
+                                    <label for="height-input" class="text-sm font-medium text-gray-700">Altezza (cm)</label>
+                                    <input type="number" id="height-input" placeholder="165" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400">
+                                </div>
+                            </div>
+                            <button id="save-profile-btn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-300 hover:bg-green-700 flex items-center justify-center">
+                                Salva Profilo
+                            </button>
+                            <p id="save-profile-success" class="text-green-700 text-sm text-center hidden">Profilo salvato!</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Riquadro Chat AI -->
+                    <div id="ai-chat-box">
+                        <h3 class="text-xl font-semibold text-indigo-800 mb-4">Assistente AI</h3>
+                        <div id="chat-messages" class="chat-messages">
+                            <!-- Il primo messaggio dell'AI viene aggiunto dinamicamente -->
+                        </div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input" class="chat-input" placeholder="Scrivi il tuo messaggio...">
+                            <button id="chat-send-btn" class="chat-send-btn">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Aggiungi Nota/Sintomo -->
+                    <div class="bg-purple-50 p-6 rounded-lg border border-purple-200">
+                        <h3 class="text-xl font-semibold text-purple-800 mb-4">Aggiungi Nota / Sintomo</h3>
+                        <div class="space-y-3">
+                            <input type="text" id="note-input" placeholder="Come ti senti oggi?" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            <button id="add-note-btn" class="w-full text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-300">
+                                Salva Nota
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Note Recenti -->
+                    <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Note Recenti</h3>
+                        <ul id="notes-list" class="space-y-3 max-h-48 overflow-y-auto">
+                            <li class="text-gray-500">Nessuna nota ancora.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Messaggio di Errore/Info -->
+            <div id="error-message" class="mt-6 text-center text-red-600 font-semibold"></div>
+
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Importa le funzioni necessarie dagli SDK (Versione aggiornata 12.6.0)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged,
+            GoogleAuthProvider,
+            signInWithPopup,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            updateDoc, 
+            onSnapshot,
+            arrayUnion,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+        // --- CONFIGURAZIONE FIREBASE (Definitiva, fornita dall'utente) ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyA5iurQs4IOci34Yej5yTJRcbgmSijumIk",
+          authDomain: "app-partner-periodo-tracker.firebaseapp.com",
+          projectId: "app-partner-periodo-tracker",
+          storageBucket: "app-partner-periodo-tracker.firebasestorage.app",
+          messagingSenderId: "255852237846",
+          appId: "1:255852237846:web:c479a8540465efde679137",
+          measurementId: "G-M7YQRQC0HV"
+        };
+        const firebaseConfigStr = JSON.stringify(firebaseConfig);
+        // --- FINE CONFIGURAZIONE ---
+        
+        // FIX: Prende il projectId dalla config, non da __app_id (che è undefined)
+        const appId = firebaseConfig.projectId || 'default-app-id';
+        
+        let app, auth, db, analytics;
+        let userId = null;
+        let currentCycleId = null;
+        let unsubscribeCycle = null;
+        let unsubscribeProfile = null; // Aggiunto per il profilo
+        
+        // --- MODALITÀ DEMO (Ora disattivata, ma la logica è qui se serve) ---
+        let isDemoMode = false;
+        let currentCycleData = { 
+            periods: [], 
+            notes: [], 
+            intercourse: [] 
+        }; 
+
+        // Stato del calendario
+        let currentDate = new Date();
+
+        // --- ELEMENTI DOM ---
+        const loginView = document.getElementById('login-view');
+        const loadingView = document.getElementById('loading-view');
+        const loadingMessage = document.getElementById('loading-message');
+        const welcomeView = document.getElementById('welcome-view');
+        const trackerView = document.getElementById('tracker-view');
+        const errorMessage = document.getElementById('error-message');
+        const demoModeAlert = document.getElementById('demo-mode-alert');
+        
+        // Bottoni
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const appLogoutBtn = document.getElementById('app-logout-btn'); 
+        const createCycleBtn = document.getElementById('create-cycle-btn');
+        const joinCycleBtn = document.getElementById('join-cycle-btn');
+        const joinIdInput = document.getElementById('join-id-input');
+
+        // Dropdown
+        const openActionsMenuBtn = document.getElementById('open-actions-menu-btn');
+        const actionsDropdown = document.getElementById('actions-dropdown');
+        const dropdownLogPeriodStart = document.getElementById('dropdown-log-period-start');
+        const dropdownLogPeriodEnd = document.getElementById('dropdown-log-period-end');
+        const dropdownLogIntercourse = document.getElementById('dropdown-log-intercourse');
+        
+        // NUOVI: Elementi Profilo
+        const ageInput = document.getElementById('age-input');
+        const weightInput = document.getElementById('weight-input');
+        const heightInput = document.getElementById('height-input');
+        const saveProfileBtn = document.getElementById('save-profile-btn');
+        const saveProfileSuccess = document.getElementById('save-profile-success');
+
+        // Chat AI
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        
+        // Tracker
+        const shareIdBox = document.getElementById('share-id-box');
+
+        // --- COSTANTI AI ---
+        const AI_SYSTEM_PROMPT = `Sei un'assistente AI specializzata in salute femminile, ciclo mestruale, e benessere sessuale.
+Rispondi in modo empatico, informativo, scientifico ma accessibile. 
+Parla in italiano.
+NON DEVI MAI FORNIRE DIAGNOSI MEDICHE. 
+Se un utente sembra descrivere un sintomo medico grave o chiede una diagnosi, devi rifiuta gentilmente e consiglia di consultare un medico o un ginecologo.`;
+        const AI_WELCOME_MESSAGE = "Ciao! Sono la tua assistente. Chiedimi pure consigli sul ciclo, il benessere o la contraccezione. (Non fornisco diagnosi mediche)";
+
+        // Icone SVG per Avatar
+        const aiAvatarSVG = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M12 5V3m0 18v-2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4M19.8 19.8l-1.4-1.4M5.6 5.6l-1.4-1.4M9 12a3 3 0 11-6 0 3 3 0 016 0zm12 0a3 3 0 11-6 0 3 3 0 016 0zM12 9a3 3 0 110-6 3 3 0 010 6zm0 12a3 3 0 110-6 3 3 0 010 6z"></path></svg>`;
+        const userAvatarSVG = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`;
+
+        
+        // --- FUNZIONI DI INIZIALIZZAZIONE E AUTH ---
+
+        document.addEventListener('DOMContentLoaded', initializeAppAndAuth);
+
+        async function initializeAppAndAuth() {
+            
+            // L'app ora usa solo la configurazione definitiva
+            if (!firebaseConfig.apiKey) {
+                console.error("Configurazione Firebase mancante!");
+                alert("Errore: Configurazione Firebase non trovata.");
+                return;
+            }
+
+            // Setup Listeners UI (si attacca a tutti i bottoni)
+            setupUIListeners();
+            // Carica il primo messaggio dell'AI
+            displayMessage(AI_WELCOME_MESSAGE, 'ai');
+
+            // Inizializza Firebase e imposta l'auth reale
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                analytics = getAnalytics(app); // Analytics ora funziona
+
+                // Autenticazione reale
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        handleUserLoggedIn(user);
+                    } else {
+                        handleUserLoggedOut();
+                    }
+                });
+
+            } catch (error) {
+                console.error("Errore di inizializzazione Firebase:", error);
+                showView('login'); // Mostra login se l'init fallisce
+                showError("Errore di connessione. Ricarica la pagina.");
+            }
+        }
+        
+        async function handleUserLoggedIn(user) {
+            userId = user.uid;
+            console.log("Utente loggato:", userId);
+            showView('loading', 'Controllo il tuo profilo...');
+            // MODIFICATO: Rinomino e cambio logica
+            await loadUserProfile_InitialCheck(); 
+        }
+
+        function handleUserLoggedOut() {
+            userId = null;
+            if (unsubscribeCycle) unsubscribeCycle();
+            if (unsubscribeProfile) unsubscribeProfile(); // Pulisce il listener del profilo
+            currentCycleId = null;
+            currentCycleData = { periods: [], notes: [], intercourse: [] };
+            
+            console.log("Utente disconnesso.");
+            showView('login');
+        }
+        
+        // --- GESTIONE VISTE ---
+
+        function showView(viewName, message = "Caricamento...") {
+            loginView.classList.add('hidden');
+            loadingView.classList.add('hidden');
+            welcomeView.classList.add('hidden');
+            trackerView.classList.add('hidden');
+
+            if (viewName === 'login') {
+                loginView.classList.remove('hidden');
+            } else if (viewName === 'welcome') {
+                welcomeView.classList.remove('hidden');
+            } else if (viewName === 'tracker') {
+                trackerView.classList.remove('hidden');
+            } else {
+                loadingMessage.textContent = message;
+                loadingView.classList.remove('hidden');
+            }
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error-message') || null;
+            if (errorEl) {
+                errorEl.textContent = message;
+                setTimeout(() => { errorEl.textContent = ''; }, 3000);
+            } else {
+                console.error("showError:", message);
+            }
+        }
+
+        // --- GESTIONE UI LISTENERS ---
+        
+        function setupUIListeners() {
+            // Login/Logout
+            loginBtn.addEventListener('click', signInWithGoogle);
+            logoutBtn.addEventListener('click', doSignOut);
+            appLogoutBtn.addEventListener('click', doSignOut);
+
+            // Welcome
+            createCycleBtn.addEventListener('click', createNewCycle);
+            joinCycleBtn.addEventListener('click', joinCycle);
+
+            // Dropdown
+            openActionsMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                actionsDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', (e) => {
+                if (!actionsDropdown.classList.contains('hidden') && !openActionsMenuBtn.contains(e.target)) {
+                    actionsDropdown.classList.add('hidden');
+                }
+            });
+            dropdownLogPeriodStart.addEventListener('click', () => { logPeriodStart(); actionsDropdown.classList.add('hidden'); });
+            dropdownLogPeriodEnd.addEventListener('click', () => { logPeriodEnd(); actionsDropdown.classList.add('hidden'); });
+            dropdownLogIntercourse.addEventListener('click', () => { logIntercourse(); actionsDropdown.classList.add('hidden'); });
+
+            // NUOVO: Listener Profilo
+            saveProfileBtn.addEventListener('click', saveProfile);
+
+            // Chat
+            chatSendBtn.addEventListener('click', handleChatSubmit);
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleChatSubmit();
+                }
+            });
+            
+            // Altro
+            document.getElementById('add-note-btn').addEventListener('click', addNote);
+            document.getElementById('copy-id-btn').addEventListener('click', copyCycleId);
+            document.getElementById('prev-month-btn').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+            document.getElementById('next-month-btn').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        }
+        
+        // --- FUNZIONI AUTH ---
+        
+        async function signInWithGoogle() {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+                // onAuthStateChanged si occuperà del resto
+            } catch (error) {
+                console.error("Errore Login Google:", error);
+                if (error.code === 'auth/popup-blocked') {
+                    showError("Pop-up bloccato. Abilita i pop-up per questa app.");
+                } else if (error.code === 'auth/configuration-not-found') {
+                     showError("Errore: Login con Google non abilitato in Firebase.");
+                } else {
+                    showError("Impossibile accedere. Riprova.");
+                }
+            }
+        }
+
+        async function doSignOut() {
+            try {
+                await signOut(auth);
+                // onAuthStateChanged si occuperà del resto
+            } catch (error) {
+                console.error("Errore Logout:", error);
+            }
+        }
+
+        // --- PERCORSI FIRESTORE (con profilo utente) ---
+        // Semplificati per evitare problemi con le Regole di Sicurezza
+        const getUserProfilePath = (uId) => `users/${uId}`;
+        const getSharedCyclePath = (cId) => `cycles/${cId}`;
+
+
+        // --- GESTIONE PROFILO E CICLO ---
+        
+        // MODIFICATO: Questa funzione è ora un controllo *una tantum* al login.
+        // Non usa più onSnapshot.
+        async function loadUserProfile_InitialCheck() {
+            if (unsubscribeProfile) unsubscribeProfile(); // Pulisce vecchi listener
+            if (unsubscribeCycle) unsubscribeCycle();
+
+            const profileRef = doc(db, getUserProfilePath(userId));
+            try {
+                const docSnap = await getDoc(profileRef);
+
+                if (docSnap.exists() && docSnap.data().cycleId) {
+                    // L'utente ha un profilo E un cycleId
+                    console.log("Profilo trovato, caricamento ciclo:", docSnap.data().cycleId);
+                    await loadCycle(docSnap.data().cycleId); // Carica il ciclo (che imposterà i listener)
+                } else {
+                    // L'utente non ha un profilo o non ha un cycleId
+                    console.log("Nessun profilo/cycleId trovato, mostro benvenuto.");
+                    showView('welcome');
+                }
+            } catch (error) {
+                console.error("Errore caricamento profilo iniziale:", error);
+                showView('welcome');
+            }
+        }
+
+        // NUOVA: Funzione per popolare i campi del profilo
+        function populateProfileInputs(data) {
+            if (!data) return;
+            ageInput.value = data.age || '';
+            weightInput.value = data.weight || '';
+            heightInput.value = data.height || '';
+        }
+
+        // NUOVA: Funzione per salvare il profilo
+        async function saveProfile() {
+            const dataToSave = {
+                age: ageInput.value ? Number(ageInput.value) : null,
+                weight: weightInput.value ? Number(weightInput.value) : null,
+                height: heightInput.value ? Number(heightInput.value) : null,
+                updatedAt: serverTimestamp()
+            };
+
+            saveProfileBtn.disabled = true;
+            saveProfileBtn.innerHTML = 'Salvataggio...';
+
+            try {
+                const profileRef = doc(db, getUserProfilePath(userId));
+                // Usa setDoc con merge:true per creare/aggiornare senza sovrascrivere cycleId
+                await setDoc(profileRef, dataToSave, { merge: true });
+                
+                console.log("Profilo salvato:", dataToSave);
+                saveProfileSuccess.classList.remove('hidden');
+                setTimeout(() => saveProfileSuccess.classList.add('hidden'), 2000);
+
+            } catch (error) {
+                console.error("ERRORE DETTAGLIATO SALVATAGGIO PROFILO:", error.code, error.message);
+                showError("Impossibile salvare il profilo. (Errore: " + error.code + ")");
+            } finally {
+                saveProfileBtn.disabled = false;
+                saveProfileBtn.innerHTML = 'Salva Profilo';
+            }
+        }
+
+        // NUOVO: Spinner SVG per i pulsanti
+        const spinnerSVG = `<svg class="btn-spinner -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>`;
+
+        async function createNewCycle() {
+            const newCycleId = crypto.randomUUID().substring(0, 12);
+            
+            showView('loading', 'Creazione ciclo in corso...'); // MOSTRA CARICAMENTO
+
+            const cycleDocRef = doc(db, getSharedCyclePath(newCycleId));
+            const profileRef = doc(db, getUserProfilePath(userId)); // Prendi ref del profilo
+
+            try {
+                // 1. Crea il documento ciclo pubblico
+                await setDoc(cycleDocRef, {
+                    createdAt: serverTimestamp(),
+                    createdBy: userId,
+                    periods: [],
+                    notes: [],
+                    intercourse: []
+                });
+                
+                // 2. Collega il ciclo al profilo privato
+                await setDoc(profileRef, { cycleId: newCycleId }, { merge: true });
+                console.log("Profilo utente aggiornato con cycleId:", newCycleId);
+
+                // 3. MODIFICATO: Chiama esplicitamente loadCycle ORA.
+                // Non ci affidiamo più al listener del profilo per farlo.
+                await loadCycle(newCycleId);
+
+            } catch (error) {
+                console.error("ERRORE DETTAGLIATO CREAZIONE CICLO:", error.code, error.message);
+                showError("Impossibile creare il ciclo. (Errore: " + error.code + ")");
+                showView('welcome'); // TORNA ALLA SELEZIONE
+            }
+        }
+
+        async function joinCycle() {
+            const idToJoin = joinIdInput.value.trim();
+            if (!idToJoin) {
+                showError("Inserisci un ID ciclo valido.");
+                return;
+            }
+            
+            showView('loading', 'Verifica ciclo...'); // MOSTRA CARICAMENTO
+
+            const cycleDocRef = doc(db, getSharedCyclePath(idToJoin));
+            const profileRef = doc(db, getUserProfilePath(userId)); // Prendi ref
+
+            try {
+                // 1. Controlla se il ciclo pubblico esiste
+                const docSnap = await getDoc(cycleDocRef);
+                if (!docSnap.exists()) {
+                    showError("Ciclo non trovato. Controlla l'ID e riprova.");
+                    throw new Error("Ciclo non trovato"); // Ferma l'esecuzione
+                }
+                
+                // 2. Collega il ciclo al profilo privato
+                await setDoc(profileRef, { cycleId: idToJoin }, { merge: true });
+                console.log("Profilo utente aggiornato con cycleId:", idToJoin);
+
+                // 3. MODIFICATO: Chiama esplicitamente loadCycle ORA.
+                await loadCycle(idToJoin);
+
+            } catch (error) {
+                console.error("ERRORE DETTAGLIATO UNIONE CICLO:", error.code, error.message);
+                showView('welcome'); // TORNA ALLA SELEZIONE
+            }
+        }
+        
+        /* RIMOSSA linkCycleToProfile - la logica è ora in createNewCycle e joinCycle */
+
+        // MODIFICATO: loadCycle ora imposta ENTRAMBI i listener
+        async function loadCycle(id) {
+            if (!id) {
+                if (unsubscribeCycle) unsubscribeCycle();
+                if (unsubscribeProfile) unsubscribeProfile();
+                currentCycleId = null;
+                showView('welcome');
+                return;
+            }
+
+            // Pulisci i listener precedenti
+            if (unsubscribeCycle) unsubscribeCycle();
+            if (unsubscribeProfile) unsubscribeProfile();
+            
+            currentCycleId = id; // Imposta l'ID corrente
+
+            // --- 1. IMPOSTA IL LISTENER PER IL PROFILO (Età, peso, etc.) ---
+            const profileRef = doc(db, getUserProfilePath(userId));
+            unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    populateProfileInputs(docSnap.data());
+                } else {
+                    console.warn("Profilo utente non trovato durante il listener.");
+                }
+            }, (error) => {
+                console.error("Errore listener profilo:", error);
+                showError("Errore nel caricamento del profilo.");
+            });
+
+
+            // --- 2. IMPOSTA IL LISTENER PER IL CICLO (Dati principali) ---
+            const cycleDocRef = doc(db, getSharedCyclePath(id));
+            
+            unsubscribeCycle = onSnapshot(cycleDocRef, (doc) => {
+                if (doc.exists()) {
+                    console.log("Dati del ciclo aggiornati:", doc.data());
+                    currentCycleData = doc.data();
+                    if (!currentCycleData.periods) currentCycleData.periods = [];
+                    if (!currentCycleData.notes) currentCycleData.notes = [];
+                    if (!currentCycleData.intercourse) currentCycleData.intercourse = [];
+                    
+                    currentCycleData.periods.sort((a, b) => new Date(a.start) - new Date(b.start));
+                    currentCycleData.notes.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    document.getElementById('cycle-id-display').value = id;
+                    showView('tracker');
+                    updateUI();
+                    shareIdBox.classList.remove('hidden');
+                } else {
+                    // Il documento non esiste (ancora).
+                    // Questo non dovrebbe più accadere grazie ad 'await' in createNewCycle
+                    // Ma se accade, loggalo e attendi.
+                    console.warn("Documento ciclo non (ancora) trovato:", id, ". In attesa...");
+                    // NON tornare a welcome, resta in caricamento.
+                }
+            }, (error) => {
+                console.error("Errore onSnapshot:", error);
+                showError("Errore di connessione al ciclo.");
+                showView('welcome');
+            });
+        }
+
+        // --- AGGIORNAMENTO UI ---
+        function updateUI() {
+            if (!currentCycleData) return;
+            renderCalendar();
+            renderPredictions();
+            renderNotesList();
+            updatePeriodStatus();
+        }
+
+        // --- GESTIONE CALENDARIO ---
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            document.getElementById('calendar-header').textContent = `${currentDate.toLocaleString('it-IT', { month: 'long' })} ${year}`;
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let startDayOffset = (firstDayOfMonth.getDay() + 6) % 7; 
+            const todayISO = toISODateString(new Date());
+            const predictions = calculatePredictions();
+            for (let i = 0; i < startDayOffset; i++) {
+                grid.insertAdjacentHTML('beforeend', `<div class="bg-transparent"></div>`);
+            }
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDate = new Date(year, month, day);
+                const dayISO = toISODateString(dayDate);
+                let classes = "calendar-day ";
+                let content = `<span class="day-number">${day}</span>`;
+                if (dayISO === todayISO) classes += "today ";
+                if (isDateInPeriod(dayDate)) classes += "period-day ";
+                if (predictions.fertileWindow && predictions.fertileWindow.includes(dayISO)) classes += "fertile-day ";
+                if (predictions.ovulationDay && predictions.ovulationDay === dayISO) classes += "ovulation-day ";
+                const hasNote = currentCycleData.notes.some(note => note.date === dayISO);
+                const hasIntercourse = currentCycleData.intercourse.includes(dayISO);
+                if(hasNote || hasIntercourse) {
+                    content += `<div class="icons-container">`;
+                    if(hasNote) content += `<span class="note-dot"></span>`;
+                    if(hasIntercourse) content += `<span class="heart-icon">❤️</span>`;
+                    content += `</div>`;
+                }
+                grid.insertAdjacentHTML('beforeend', `<div class="${classes}">${content}</div>`);
+            }
+        }
+        function toISODateString(date) { return date.toISOString().split('T')[0]; }
+        function isDateInPeriod(date) {
+            const dateISO = toISODateString(date);
+            return currentCycleData.periods.some(p => {
+                const start = p.start;
+                const end = p.end || toISODateString(new Date()); // Considera i periodi attivi
+                return dateISO >= start && dateISO <= end;
+            });
+        }
+        function getActivePeriod() { return currentCycleData.periods.find(p => p.end === null || p.end === undefined); }
+        function updatePeriodStatus() {
+            const activePeriod = getActivePeriod();
+            const statusEl = document.getElementById('period-status');
+            if(activePeriod) {
+                const startDate = new Date(activePeriod.start);
+                const today = new Date();
+                const diffTime = Math.abs(today - new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                statusEl.textContent = `Giorno ${diffDays} del ciclo.`;
+                dropdownLogPeriodStart.disabled = true;
+                dropdownLogPeriodEnd.disabled = false;
+            } else {
+                statusEl.textContent = "";
+                dropdownLogPeriodStart.disabled = false;
+                dropdownLogPeriodEnd.disabled = true;
+            }
+        }
+
+        // --- GESTIONE LOGGING ---
+
+        async function logPeriodStart() {
+            if (getActivePeriod()) {
+                showError("Un ciclo è già attivo.");
+                return;
+            }
+            const today = toISODateString(new Date());
+            const newPeriod = { start: today, end: null };
+            
+            const cycleDocRef = doc(db, getSharedCyclePath(currentCycleId));
+            try {
+                await updateDoc(cycleDocRef, { periods: arrayUnion(newPeriod) });
+            } catch (error) { showError("Impossibile registrare l'inizio del ciclo."); }
+        }
+
+        async function logPeriodEnd() {
+            const activePeriod = getActivePeriod();
+            if (!activePeriod) {
+                showError("Nessun ciclo attivo da terminare.");
+                return;
+            }
+            const today = toISODateString(new Date());
+            
+            const updatedPeriods = currentCycleData.periods.map(p => (p.start === activePeriod.start && p.end === null) ? { ...p, end: today } : p);
+            const cycleDocRef = doc(db, getSharedCyclePath(currentCycleId));
+            try {
+                await updateDoc(cycleDocRef, { periods: updatedPeriods });
+            } catch (error) { showError("Impossibile registrare la fine del ciclo."); }
+        }
+
+        async function logIntercourse() {
+            const today = toISODateString(new Date());
+            if (currentCycleData.intercourse.includes(today)) {
+                // Non mostrare errore, semplicemente non fare nulla o aggiorna un timestamp?
+                // Per ora, non fa nulla se già presente.
+                return; 
+            }
+
+            const cycleDocRef = doc(db, getSharedCyclePath(currentCycleId));
+            try {
+                await updateDoc(cycleDocRef, { intercourse: arrayUnion(today) });
+            } catch (error) { showError("Impossibile registrare il rapporto."); }
+        }
+
+        async function addNote() {
+            const noteInput = document.getElementById('note-input');
+            const noteText = noteInput.value.trim();
+            if (!noteText) {
+                showError("La nota non può essere vuota.");
+                return;
+            }
+            const today = toISODateString(new Date());
+            const newNote = { date: today, text: noteText, author: userId.substring(0, 5) };
+            
+            const cycleDocRef = doc(db, getSharedCyclePath(currentCycleId));
+            try {
+                await updateDoc(cycleDocRef, { notes: arrayUnion(newNote) });
+                noteInput.value = '';
+            } catch (error) { showError("Impossibile salvare la nota."); }
+        }
+        
+        function renderNotesList() {
+            const list = document.getElementById('notes-list');
+            if (currentCycleData.notes.length === 0) {
+                list.innerHTML = '<li class="text-gray-500">Nessuna nota ancora.</li>';
+                return;
+            }
+            list.innerHTML = currentCycleData.notes.map(note => `
+                <li class="bg-white p-3 rounded-lg border border-gray-200">
+                    <p class="text-gray-800">${note.text}</p>
+                    <span class="text-xs text-purple-600 font-semibold">${new Date(note.date).toLocaleDateString('it-IT')} (da: ${note.author})</span>
+                </li>
+            `).join('');
+        }
+
+        // --- CALCOLO PREVISIONI ---
+        function calculatePredictions() {
+            const periods = currentCycleData.periods.filter(p => p.end);
+            if (periods.length < 2) return {};
+            let cycleLengths = [];
+            for (let i = 1; i < periods.length; i++) {
+                cycleLengths.push(dateDiff(periods[i-1].start, periods[i].start));
+            }
+            const avgCycleLength = average(cycleLengths) || 28;
+            let durations = periods.map(p => dateDiff(p.start, p.end) + 1);
+            const avgDuration = average(durations) || 5;
+            const lastPeriodStart = new Date(periods[periods.length - 1].start);
+            const nextPeriodStartDate = addDays(lastPeriodStart, avgCycleLength);
+            const nextPeriodEndDate = addDays(nextPeriodStartDate, avgDuration - 1);
+            const ovulationDate = addDays(nextPeriodStartDate, -14);
+            const fertileStart = addDays(ovulationDate, -5);
+            const fertileEnd = addDays(ovulationDate, 1);
+            return {
+                avgCycleLength: Math.round(avgCycleLength),
+                avgDuration: Math.round(avgDuration),
+                nextPeriodStart: toISODateString(nextPeriodStartDate),
+                nextPeriodEnd: toISODateString(nextPeriodEndDate),
+                ovulationDay: toISODateString(ovulationDate),
+                fertileWindow: getDaysArray(fertileStart, fertileEnd)
+            };
+        }
+        function renderPredictions() {
+            const content = document.getElementById('predictions-content');
+            const predictions = calculatePredictions();
+            if (!predictions.nextPeriodStart) {
+                content.innerHTML = '<p class="text-gray-700">Servono almeno due cicli completi per le previsioni.</p>';
+                return;
+            }
+            content.innerHTML = `
+                <p><strong>Prossimo Ciclo Atteso:</strong> ${new Date(predictions.nextPeriodStart).toLocaleDateString('it-IT')}</p>
+                <p><strong>Giorno Ovulazione Atteso:</strong> ${new Date(predictions.ovulationDay).toLocaleDateString('it-IT')}</p>
+                <p><strong>Finestra Fertile:</strong> ${new Date(predictions.fertileWindow[0]).toLocaleDateString('it-IT')} - ${new Date(predictions.fertileWindow[predictions.fertileWindow.length - 1]).toLocaleDateString('it-IT')}</p>
+                <p class="text-sm text-gray-500 mt-2">Basato su una durata media del ciclo di ${predictions.avgCycleLength} giorni.</p>
+            `;
+        }
+
+        // --- GESTIONE CHAT AI ---
+        async function handleChatSubmit() {
+            const prompt = chatInput.value.trim();
+            if (!prompt) return;
+            displayMessage(prompt, 'user');
+            chatInput.value = '';
+            const loadingEl = displayMessage('Sto pensando...', 'loading');
+            try {
+                const aiResponse = await getAiResponse(prompt);
+                loadingEl.remove();
+                displayMessage(aiResponse, 'ai');
+            } catch (error) {
+                console.error("Errore chiamata AI:", error);
+                loadingEl.remove();
+                displayMessage('Oh, c\'è stato un errore. Riprova tra poco.', 'ai');
+            }
+        }
+        function displayMessage(text, type) {
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message-container');
+            let avatarHTML = '';
+            let bubbleClass = '';
+            if (type === 'user') {
+                messageContainer.classList.add('user');
+                avatarHTML = `<div class="message-avatar user">${userAvatarSVG}</div>`;
+                bubbleClass = 'user';
+            } else if (type === 'ai') {
+                messageContainer.classList.add('ai');
+                avatarHTML = `<div class="message-avatar ai">${aiAvatarSVG}</div>`;
+                bubbleClass = 'ai';
+            } else { // 'loading'
+                messageContainer.classList.add('ai');
+                avatarHTML = `<div class="message-avatar ai">${aiAvatarSVG}</div>`;
+                bubbleClass = 'loading';
+            }
+            const bubbleHTML = `<div class="message-bubble ${bubbleClass}">${text}</div>`;
+            messageContainer.innerHTML = avatarHTML + bubbleHTML;
+            chatMessages.appendChild(messageContainer);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageContainer;
+        }
+        async function getAiResponse(userQuery) {
+            const apiKey = ""; // L'API Key è gestita dall'ambiente
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: AI_SYSTEM_PROMPT }] },
+            };
+            const requestOptions = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+            try {
+                const response = await exponentialBackoff(async () => {
+                    const res = await fetch(apiUrl, requestOptions);
+                    if (!res.ok) {
+                        console.error("Errore API:", res.status, await res.text());
+                        if (res.status === 429 || res.status >= 500) throw new Error(`API error ${res.status}`);
+                        else return { ok: false, data: await res.json() };
+                    }
+                    return { ok: true, data: await res.json() };
+                });
+                if (!response.ok) throw new Error(response.data?.error?.message || "Errore sconosciuto dall'API");
+                const result = response.data;
+                const candidate = result.candidates?.[0];
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    return candidate.content.parts[0].text;
+                } else {
+                    return "Non sono sicura di come rispondere a questo.";
+                }
+            } catch (error) {
+                console.error("Errore nel fetch AI:", error);
+                throw error;
+            }
+        }
+        async function exponentialBackoff(apiCall, maxRetries = 3, baseDelay = 1000) {
+            let retries = 0;
+            while (retries < maxRetries) {
+                try {
+                    return await apiCall();
+                } catch (error) {
+                    retries++;
+                    if (retries >= maxRetries) throw error;
+                    const delay = baseDelay * Math.pow(2, retries - 1);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        // --- FUNZIONI DI UTILITÀ ---
+        function dateDiff(date1, date2) {
+            const d1 = new Date(date1);
+            const d2 = new Date(date2);
+            return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+        }
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+        function average(arr) {
+            if (arr.length === 0) return 0;
+            return arr.reduce((a, b) => a + b, 0) / arr.length;
+        }
+        function getDaysArray(start, end) {
+            let arr = [];
+            for (let dt = new Date(start); dt <= new Date(end); dt.setDate(dt.getDate() + 1)) {
+                arr.push(toISODateString(new Date(dt)));
+            }
+            return arr;
+        }
+        function copyCycleId() {
+            const idInput = document.getElementById('cycle-id-display');
+            idInput.select();
+            try {
+                // Metodo deprecato ma con buon fallback
+                document.execCommand('copy');
+                const successMsg = document.getElementById('copy-success');
+                successMsg.classList.remove('hidden');
+                setTimeout(() => { successMsg.classList.add('hidden'); }, 2000);
+            } catch (err) {
+                // Fallback moderno (potrebbe fallire in iFrame)
+                navigator.clipboard.writeText(idInput.value).then(() => {
+                    const successMsg = document.getElementById('copy-success');
+                    successMsg.classList.remove('hidden');
+                    setTimeout(() => { successMsg.classList.add('hidden'); }, 2000);
+                }).catch(err => {
+                    showError("Impossibile copiare l'ID. Selezionalo e copialo manualmente.");
+                });
+            }
+        }
+    </script>
+</body>
+</html>
